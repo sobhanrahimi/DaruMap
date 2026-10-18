@@ -1,0 +1,236 @@
+// Prisma Schema for DaruMap (دارومپ)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  phone     String?
+  role      String   @default("CUSTOMER") // CUSTOMER, PHARMACY_STAFF, ADMIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customerProfile     CustomerProfile?
+  pharmacyMemberships PharmacyMembership[]
+  orders              Order[]
+  prescriptions       Prescription[]
+  reminders           MedicationReminder[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+}
+
+model CustomerProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  nationalId          String?
+  dateOfBirth         DateTime?
+  address             String?
+  insuranceProviderId String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insuranceProvider InsuranceProvider? @relation(fields: [insuranceProviderId], references: [id])
+  loyaltyMembership LoyaltyMembership?
+}
+
+model Pharmacy {
+  id          String   @id @default(uuid())
+  name        String
+  licenseNo   String   @unique
+  address     String
+  city        String
+  phone       String
+  latitude    Float
+  longitude   Float
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships   PharmacyMembership[]
+  verifications PharmacyVerification[]
+  inventory     PharmacyInventory[]
+  orders        Order[]
+}
+
+model PharmacyMembership {
+  id         String   @id @default(uuid())
+  userId     String
+  pharmacyId String
+  role       String   @default("STAFF") // OWNER, PHARMACIST, STAFF
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pharmacyId])
+}
+
+model PharmacyVerification {
+  id              String   @id @default(uuid())
+  pharmacyId      String
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  documentUrl     String?
+  reviewedBy      String?
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+}
+
+model Medicine {
+  id             String   @id @default(uuid())
+  nameFa         String
+  nameEn         String?
+  genericName    String?
+  description    String?
+  requiresRecipe Boolean  @default(false)
+  category       String?
+  createdAt      DateTime @default(now())
+
+  inventories PharmacyInventory[]
+}
+
+model ProductCategory {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  products    Product[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  categoryId  String
+  nameFa      String
+  nameEn      String?
+  description String?
+  brand       String?
+  createdAt   DateTime @default(now())
+
+  category    ProductCategory     @relation(fields: [categoryId], references: [id])
+  inventories PharmacyInventory[]
+}
+
+model PharmacyInventory {
+  id          String   @id @default(uuid())
+  pharmacyId  String
+  medicineId  String?
+  productId   String?
+  priceToman  Int      // In DaruMap, internal currency is TOMAN
+  stock       Int      @default(0)
+  isAvailable Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  pharmacy Pharmacy  @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  medicine Medicine?  @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  product  Product?   @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model InsuranceProvider {
+  id          String            @id @default(uuid())
+  name        String            @unique
+  code        String            @unique
+  description String?
+  profiles    CustomerProfile[]
+}
+
+model Prescription {
+  id          String   @id @default(uuid())
+  userId      String
+  imageUrl    String
+  notes       String?
+  status      String   @default("PENDING") // PENDING, REVIEWED, FULFILLED, REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items PrescriptionItem[]
+}
+
+model PrescriptionItem {
+  id             String @id @default(uuid())
+  prescriptionId String
+  medicineName   String
+  quantity       Int    @default(1)
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+}
+
+model LoyaltyMembership {
+  id                String   @id @default(uuid())
+  customerProfileId String   @unique
+  points            Int      @default(0)
+  tier              String   @default("BRONZE") // BRONZE, SILVER, GOLD
+  createdAt         DateTime @default(now())
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+}
+
+model MedicationReminder {
+  id           String   @id @default(uuid())
+  userId       String
+  medicineName String
+  dosage       String
+  timeOfDay    String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  userId          String
+  pharmacyId      String   // Each order belongs to EXACTLY ONE pharmacy
+  totalToman      Int
+  status          String   @default("PENDING") // PENDING, CONFIRMED, PREPARING, READY_FOR_PICKUP, DELIVERED, CANCELLED
+  deliveryAddress String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pharmacy Pharmacy    @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  items    OrderItem[]
+}
+
+model OrderItem {
+  id             String @id @default(uuid())
+  orderId        String
+  medicineId     String
+  quantity       Int
+  unitPriceToman Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
