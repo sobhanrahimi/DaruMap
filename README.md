@@ -1,61 +1,88 @@
-# دارومپ (DaruMap) — راهنمای کامل آماده‌سازی انتشار استیجینگ (Staging Deployment Guide)
+# دارومپ (DaruMap) — راهنمای ارزیابی زیرساخت و استقرار استیجینگ (Staging Deployment & Cloud Audit Guide)
 
 **دارومپ (DaruMap)** یک پلتفرم کشوری برای یافتن داروهای کمیاب، استعلام انبار داروخانه‌ها، ارسال امن نسخه و انتخاب بیمه پایه، یادآورهای دارویی، باشگاه مشتریان، مشاهده قیمت‌ها به تومان و ثبت سفارش آنلاین با پشتیبانی کامل از چیدمان **راست‌به‌چپ (RTL)** و فونت فارسی **وزیرمتن** می‌باشد.
 
 ---
 
-## 🚀 راهنمای آماده‌سازی و استقرار در محیط استیجینگ (Staging Deployment Steps)
+## 📊 ماتریس مقایسه و ارزیابی سازگاری ابری (Iran-Based Cloud Provider Audit)
 
-### ۱. تنظیم متغیرهای محیطی
-یک فایل `.env` در سرور استیجینگ بر اساس `.env.example` ایجاد کرده و مقادیر زیر را تنظیم کنید:
-```bash
-DATABASE_URL="postgresql://staging_user:staging_pass@localhost:5432/daroomap_staging?schema=public"
-NODE_ENV="staging"
-NEXT_PUBLIC_APP_URL="https://staging.daroomap.ir"
-NEXTAUTH_SECRET="your-staging-secret-key"
-NEXTAUTH_URL="https://staging.daroomap.ir"
-PRESCRIPTION_STORAGE_PATH="/var/data/daroomap/prescriptions"
-CRON_SECRET_KEY="your-staging-cron-secret"
-```
+ارزیابی زیرساختی برنامه دارومپ بر روی دو ارائه‌دهنده ابری مطرح در ایران (**ساکو ابر / Sakoocloud** و **وب‌لاینز / Weblines Cloud**):
 
-### ۲. نصب وابستگی‌ها و بیلد برنامه
+| نیاز زیرساختی برنامه (Requirements) | ساکو ابر (Sakoocloud) | وب‌لاینز (Weblines Cloud - VPS / Hosting) | وضعیت تأیید (Status) |
+| :--- | :--- | :--- | :--- |
+| **محیط اجرایی Node.js 20+ / Docker** | پشتیبانی کامل از Dockerfile و Image | پشتیبانی روی Linux VPS / cPanel Node Manager | **CONFIRMED** |
+| **دیتابیس PostgreSQL** | دیتابیس مدیریت‌شده (Managed PostgreSQL) | نصب روی VPS یا سرویس دیتابیس ابری | **CONFIRMED** |
+| **پشتیبان‌گیری خودکار دیتابیس (Backups)** | نیازمند استعلام سیاست نگهداری و بازیابی | فایل‌های پشتیبان روزانه/هفتگی سرور | **UNKNOWN** (نیازمند استعلام از Sakoo) |
+| **فایل سیستم پایدار برای نسخه‌ها (Volume)** | اتصال Volume پایدار (PVC / Persistent Volume) | دیسک سخت سرور مجازی خارج از `public_html` | **CONFIRMED** |
+| **زمان‌بندی یادآورهای دارویی (Cron Worker)** | سرویس Cron اجرایی یا فراخوانی Webhook | Cron Job سیستم‌عامل لینوکس / cPanel | **CONFIRMED** |
+| **گواهی امنیتی SSL و دامنه اختصاصی** | SSL رایگان Let's Encrypt و اتصال دامنه `.ir` | SSL رایگان AutoSSL و اتصال دامنه `.ir` | **CONFIRMED** |
+| **اتصال به مخزن خصوصی GitHub** | Integration مستقیم یا Registry | اتصال از طریق SSH / Git Version Control | **CONFIRMED** |
+
+---
+
+## 🔒 اصول ایمنی و ایزوله‌سازی محیط استیجینگ (Staging Safety Protocols)
+
+1. **دیتابیس کاملاً ایزوله:** عدم استفاده از دیتابیس عملیاتی (Production) و اجرای دستورات مایگریشن روی پایگاه‌داده تست.
+2. **داده‌های آزمایشی سنتتیک (Synthetic Data):** استفاده منحصر به فرد از داده‌های فرضی برای کاربران، داروها و سفارشات.
+3. **پزشکی و نسخه‌های غیرواقعی:** عدم بارگذاری تصاویر نسخ واقعی بیماران در محیط استیجینگ.
+4. **درگاه پرداخت شبیه‌سازی‌شده:** عدم اتصال به درگاه‌های واقعی شتاب؛ استفاده از قیمت‌های فرضی به تومان.
+5. **ارسال نکرده اعلان‌های بیرونی:** عدم ارسال پیامک واقعی یا ایمیل به مشتریان در فاز تست.
+6. **محرمانه بودن متغیرها:** عدم ثبت کلیدها و پسوردهای واقعی در Git.
+
+---
+
+## 🛠 دستورات ساخت، مایگریشن و اجرا (Build, Migration & Start Commands)
+
+### ۱. نصب وابستگی‌ها و تولید کلاینت پریزما
 ```bash
 npm install
 npx prisma generate
-npx prisma db push
+```
+
+### ۲. مایگریشن دیتابیس در استیجینگ
+برای اعمال تغییرات اسکیما روی دیتابیس PostgreSQL استیجینگ بدون از دست رفتن داده‌ها:
+```bash
+npx prisma migrate deploy
+```
+*نکته:* برای دیتابیس‌های آزمایشی اولیه‌می‌توان از دستور `npx prisma db push` استفاده نمود.
+
+### ۳. ساخت نسخه اجرایی Production / Staging
+```bash
 npm run build
 ```
 
-### ۳. تنظیم و اجرای Cron Job یادآورهای دارویی
-برای اجرای منظم پردازشگر پس‌زمینه ارسال یادآورها، یک Cron Job دقیقه به دقیقه در سرور تنظیم کنید:
+### ۴. اجرای برنامه
 ```bash
-* * * * * curl -X POST https://staging.daroomap.ir/api/worker/reminders -H "Authorization: Bearer your-staging-cron-secret"
+npm start
+```
+
+### ۵. ساخت و اجرای کانتینر Docker
+```bash
+docker build -t daroomap:staging .
+docker run -d -p 3000:3000 --env-file .env -v daroomap_prescriptions:/app/uploads/prescriptions daroomap:staging
 ```
 
 ---
 
-## 📋 چک‌لیست تست دود دودی استیجینگ (Staging Smoke-Test Checklist)
+## 🔑 متغیرهای محیطی مورد نیاز (Environment Variables)
 
-1. **احراز هویت و دسترسی‌ها:** ثبت‌نام و ورود کاربر مشتری و پرسنل داروخانه و بررسی عدم امکان دسترسی بین‌داروخانه‌ای.
-2. **آنبوردینگ داروخانه:** ثبت درخواست داروخانه جدید و تایید آن توسط ادمین سیستم.
-3. **جستجو و فاصله جغرافیایی:** جستجوی دارو با فیلتر شهر و دریافت موقعیت جغرافیایی مرورگر.
-4. **ثبت سفارش اتمیک:** افزودن دارو به سبد خرید، بررسی قیمت به تومان و ثبت سفارش در تراکنش دیتابیس.
-5. **ارسال نسخه و بیمه:** بارگذاری فایل تصویر/PDF نسخه (کمتر از ۵ مگابایت) و انتخاب ارائه‌دهنده بیمه پایه.
-6. **امتیازات باشگاه مشتریان:** تایید سفارش و بررسی اعطای یکباره امتیازات بدون امکان اعطای تکراری.
-7. **یادآور دارو و اعلان‌ها:** تنظیم یادآور، ثبت وضعیت مصرف (Taken/Skipped) و دریافت اعلان درون‌برنامه‌ای.
+نام متغیرهای محیطی مورد نیاز در فایل `.env`:
+* `DATABASE_URL`: آدرس اتصال به دیتابیس PostgreSQL استیجینگ.
+* `NODE_ENV`: مقدار `staging` یا `production`.
+* `NEXT_PUBLIC_APP_URL`: آدرس دامنه استیجینگ (مانند `https://staging.daroomap.ir`).
+* `NEXTAUTH_SECRET`: کلید رمزنگاری توکن‌های احراز هویت.
+* `NEXTAUTH_URL`: آدرس پایه احراز هویت.
+* `PRESCRIPTION_STORAGE_PATH`: مسیر دایرکتوری پایدار برای ذخیره‌سازی نسخه‌ها (مانند `/app/uploads/prescriptions`).
+* `CRON_SECRET_KEY`: کلید امنیتی احراز هویت درخواست‌های سرویس‌دهنده زمان‌بندی یادآورها.
 
 ---
 
-## 🧪 اجرای تست‌ها و ساخت نسخه تولیدی
+## ⏰ تنظیم پردازشگر پس‌زمینه یادآورها (Reminder Worker Setup)
 
-### اجرای تست‌های واحد (Vitest)
+پردازشگر یادآورهای دارویی از طریق نقطه پایانی `POST /api/worker/reminders` اجرا می‌گردد.
+در سرور استیجینگ می‌توانید یک Cron Job دقیقه به دقیقه جهت فراخوانی این آدرس تنظیم نمایید:
 ```bash
-npm test
-```
-
-### ساخت نسخه Production
-```bash
-npm run build
+* * * * * curl -X POST https://staging.daroomap.ir/api/worker/reminders -H "Authorization: Bearer YOUR_CRON_SECRET_KEY" -H "Content-Type: application/json"
 ```
 
 ---
