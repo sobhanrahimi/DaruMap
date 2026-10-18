@@ -1,6 +1,7 @@
 import { Header, Footer } from "@/components/layout";
-import { MedicineSearch, SearchResultItem } from "@/components/MedicineSearch";
+import { MedicineSearch } from "@/components/MedicineSearch";
 import { prisma } from "@/lib/db";
+import { calculateFreshnessStatus, MedicineSearchResult } from "@/lib/search";
 import { notFound } from "next/navigation";
 
 export default async function PharmacyDetailPage({
@@ -31,7 +32,7 @@ export default async function PharmacyDetailPage({
     notFound();
   }
 
-  const items: SearchResultItem[] = pharmacy.inventory
+  const items: MedicineSearchResult[] = pharmacy.inventory
     .filter((inv: any) => inv.medicine !== null)
     .map((inv: any) => ({
       inventoryId: inv.id,
@@ -43,10 +44,13 @@ export default async function PharmacyDetailPage({
       pharmacyId: pharmacy.id,
       pharmacyName: pharmacy.name,
       pharmacyAddress: pharmacy.address,
+      pharmacyCity: pharmacy.city,
       pharmacyPhone: pharmacy.phone,
+      pharmacyIsVerified: pharmacy.isVerified,
       priceToman: inv.priceToman,
       stock: inv.stock,
-      isAvailable: inv.isAvailable,
+      freshnessStatus: calculateFreshnessStatus(inv.updatedAt, inv.stock, inv.isAvailable),
+      lastInventoryUpdate: inv.updatedAt.toISOString(),
     }));
 
   return (
