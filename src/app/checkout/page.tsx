@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { Header, Footer } from "@/components/layout";
 import { formatToman } from "@/lib/currency";
 import { validateAndCalculateCart, CartItemInput } from "@/lib/order";
+import { createOrderAction } from "@/lib/actions";
 
 export default function CheckoutPage() {
   const [items, setItems] = useState<CartItemInput[]>([]);
   const [address, setAddress] = useState("");
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function CheckoutPage() {
     window.dispatchEvent(new Event("cartUpdated"));
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!cartValidation.isValid) {
       setOrderError(cartValidation.error || "خطا در بررسی سبد خرید");
       return;
@@ -62,10 +64,20 @@ export default function CheckoutPage() {
       return;
     }
 
-    setOrderPlaced(true);
+    setIsSubmitting(true);
     setOrderError(null);
-    localStorage.removeItem("daroomap_cart");
-    window.dispatchEvent(new Event("cartUpdated"));
+
+    const result = await createOrderAction(items, address);
+
+    setIsSubmitting(false);
+
+    if (result.success) {
+      setOrderPlaced(true);
+      localStorage.removeItem("daroomap_cart");
+      window.dispatchEvent(new Event("cartUpdated"));
+    } else {
+      setOrderError(result.error || "ثبت سفارش با خطا مواجه شد.");
+    }
   };
 
   return (
@@ -80,7 +92,7 @@ export default function CheckoutPage() {
               ✓
             </div>
             <h2 className="text-2xl font-extrabold text-emerald-800">
-              سفارش شما با موفقیت ثبت گردید!
+              سفارش شما با موفقیت در دیتابیس ثبت گردید!
             </h2>
             <p className="text-gray-600 text-sm">
               سفارش شما به داروخانه ارسال شد و پس از بررسی و آماده‌سازی، جهت تحویل پردازش خواهد شد.
@@ -202,14 +214,14 @@ export default function CheckoutPage() {
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={!cartValidation.isValid}
+                disabled={!cartValidation.isValid || isSubmitting}
                 className={`w-full py-3 rounded-xl font-bold text-white transition shadow-md text-sm ${
-                  cartValidation.isValid
+                  cartValidation.isValid && !isSubmitting
                     ? "bg-emerald-600 hover:bg-emerald-700"
                     : "bg-gray-300 cursor-not-allowed"
                 }`}
               >
-                تایید و ثبت نهایی سفارش
+                {isSubmitting ? "در حال ثبت..." : "تایید و ثبت نهایی سفارش"}
               </button>
             </div>
           </div>
