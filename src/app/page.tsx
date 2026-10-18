@@ -1,35 +1,13 @@
 import { Header, Footer } from "@/components/layout";
-import { MedicineSearch, SearchResultItem } from "@/components/MedicineSearch";
-import { prisma } from "@/lib/db";
+import { MedicineSearch } from "@/components/MedicineSearch";
+import { searchMedicinesService, MedicineSearchResult } from "@/lib/search";
 
 export default async function HomePage() {
-  let searchItems: SearchResultItem[] = [];
+  let searchItems: MedicineSearchResult[] = [];
 
   try {
-    const inventories = await prisma.pharmacyInventory.findMany({
-      include: {
-        medicine: true,
-        pharmacy: true,
-      },
-    });
-
-    searchItems = inventories
-      .filter((inv) => inv.medicine !== null)
-      .map((inv) => ({
-        inventoryId: inv.id,
-        medicineId: inv.medicine!.id,
-        medicineNameFa: inv.medicine!.nameFa,
-        medicineNameEn: inv.medicine!.nameEn || undefined,
-        genericName: inv.medicine!.genericName || undefined,
-        requiresRecipe: inv.medicine!.requiresRecipe,
-        pharmacyId: inv.pharmacy.id,
-        pharmacyName: inv.pharmacy.name,
-        pharmacyAddress: inv.pharmacy.address,
-        pharmacyPhone: inv.pharmacy.phone,
-        priceToman: inv.priceToman,
-        stock: inv.stock,
-        isAvailable: inv.isAvailable,
-      }));
+    const res = await searchMedicinesService({ page: 1, limit: 20 });
+    searchItems = res.items;
   } catch {
     searchItems = [];
   }

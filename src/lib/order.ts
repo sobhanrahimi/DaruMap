@@ -4,6 +4,7 @@
  */
 
 export interface CartItemInput {
+  inventoryId?: string;
   medicineId: string;
   medicineNameFa: string;
   pharmacyId: string;
