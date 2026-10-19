@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { validateFileMetadata } from "@/lib/storage";
 import { validateCoordinates } from "@/lib/location";
-import { authorizeStaffAction } from "@/lib/auth";
+import { authorizeStaffAction, createSessionToken, verifySessionToken } from "@/lib/auth";
 import { NextRequest } from "next/server";
 import { POST, GET, PUT, DELETE } from "@/app/api/worker/reminders/route";
 
@@ -14,6 +14,21 @@ describe("Phase 6 — Full System Security & Access Audit", () => {
 
   afterEach(() => {
     process.env.CRON_SECRET_KEY = originalEnv;
+  });
+
+  it("creates and verifies cryptographically signed session tokens", () => {
+    const user = { id: "u-100", email: "user@daroomap.ir", role: "CUSTOMER" };
+    const token = createSessionToken(user);
+    expect(token).toBeDefined();
+
+    const verified = verifySessionToken(token);
+    expect(verified?.id).toBe("u-100");
+    expect(verified?.role).toBe("CUSTOMER");
+
+    // Tampered token signature rejection
+    const parts = token.split(".");
+    const tampered = `${parts[0]}.invalidSignature123`;
+    expect(verifySessionToken(tampered)).toBeNull();
   });
 
   it("rejects path traversal attempts and invalid file types in storage manager", () => {

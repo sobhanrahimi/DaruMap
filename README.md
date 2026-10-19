@@ -77,12 +77,12 @@ docker run -d -p 3000:3000 --env-file .env -v daroomap_prescriptions:/app/upload
 
 ---
 
-## ⏰ تنظیم پردازشگر پس‌زمینه یادآورها (Reminder Worker Setup)
+## ⏰ تنظیم امن پردازشگر پس‌زمینه یادآورها (Secure Reminder Worker Setup)
 
 پردازشگر یادآورهای دارویی از طریق نقطه پایانی `POST /api/worker/reminders` اجرا می‌گردد.
-در سرور استیجینگ می‌توانید یک Cron Job دقیقه به دقیقه جهت فراخوانی این آدرس تنظیم نمایید:
+جهت حفظ امنیت، کلید `CRON_SECRET_KEY` نباید به صورت صریح در متون Shell ثبت شود. پیشنهاد می‌شود کلید از متغیرهای محیطی سرور خوانده شود:
 ```bash
-* * * * * curl -X POST https://staging.daroomap.ir/api/worker/reminders -H "Authorization: Bearer YOUR_CRON_SECRET_KEY" -H "Content-Type: application/json"
+* * * * * . /etc/environment; curl -s -S -X POST "${NEXT_PUBLIC_APP_URL}/api/worker/reminders" -H "Authorization: Bearer ${CRON_SECRET_KEY}" -H "Content-Type: application/json" > /dev/null
 ```
 
 ---

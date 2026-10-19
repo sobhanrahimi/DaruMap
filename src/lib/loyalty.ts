@@ -99,12 +99,12 @@ export async function awardLoyaltyPointsForOrder(
       throw new Error("امتیاز فقط برای سفارشات تاییدشده یا تحویل‌شده اعطا می‌شود.");
     }
 
-    // Check if points were already awarded for this order in AuditLog
+    // Check if points were already awarded for this specific order in AuditLog
+    const actionKey = `LOYALTY_POINTS_AWARDED:${orderId}`;
     const existingAward = await tx.auditLog.findFirst({
       where: {
         userId,
-        action: "LOYALTY_POINTS_AWARDED",
-        details: { contains: orderId },
+        action: actionKey,
       },
     });
 
@@ -156,7 +156,7 @@ export async function awardLoyaltyPointsForOrder(
     await tx.auditLog.create({
       data: {
         userId,
-        action: "LOYALTY_POINTS_AWARDED",
+        action: actionKey,
         details: `Order:${orderId}|Points:${pointsToAward}|TotalToman:${order.totalToman}`,
       },
     });
