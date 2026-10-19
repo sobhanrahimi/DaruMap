@@ -54,26 +54,36 @@ export default async function PharmacyDetailPage({
     }));
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800 font-sans">
       <Header />
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-gray-900">
-                🏥 {pharmacy.name}
-              </h1>
-              <p className="text-gray-600 text-sm mt-2">📍 {pharmacy.address}</p>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🏥</span>
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
+                  {pharmacy.name}
+                </h1>
+                {pharmacy.isVerified && (
+                  <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                    ✓ تاییدشده
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">📍 {pharmacy.city} — {pharmacy.address}</p>
             </div>
-            <div className="bg-emerald-50 px-4 py-2 rounded-2xl text-emerald-800 text-sm font-semibold">
-              📞 تلفن: {pharmacy.phone}
+
+            <div className="bg-teal-50 border border-teal-200/80 px-4 py-2.5 rounded-xl text-teal-900 text-xs font-bold flex items-center gap-2">
+              <span>📞</span>
+              <span>شماره تماس: {pharmacy.phone}</span>
             </div>
           </div>
         </div>
 
         <section className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-900">
-            داروهای موجود در {pharmacy.name}
+          <h2 className="text-xl font-black text-slate-900">
+            داروهای موجود در انبار {pharmacy.name}
           </h2>
           <MedicineSearch initialItems={items} />
         </section>

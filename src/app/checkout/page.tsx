@@ -81,89 +81,89 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800 font-sans">
       <Header />
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <h1 className="text-2xl font-black text-gray-900">تسویه حساب و ثبت سفارش</h1>
+        <h1 className="text-2xl font-black text-slate-900">تسویه حساب و ثبت سفارش تک‌داروخانه‌ای</h1>
 
         {orderPlaced ? (
-          <div className="bg-white p-8 rounded-3xl border border-emerald-100 text-center space-y-4 shadow-sm">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto font-bold">
+          <div className="bg-white p-8 sm:p-10 rounded-3xl border border-teal-200/80 text-center space-y-4 shadow-xs">
+            <div className="w-16 h-16 bg-teal-100 text-teal-800 rounded-full flex items-center justify-center text-3xl mx-auto font-black">
               ✓
             </div>
-            <h2 className="text-2xl font-extrabold text-emerald-800">
+            <h2 className="text-2xl font-black text-teal-900">
               سفارش شما با موفقیت در دیتابیس ثبت گردید!
             </h2>
-            <p className="text-gray-600 text-sm">
-              سفارش شما به داروخانه ارسال شد و پس از بررسی و آماده‌سازی، جهت تحویل پردازش خواهد شد.
+            <p className="text-slate-600 text-xs leading-relaxed max-w-lg mx-auto">
+              سفارش شما به صورت اتمیک به داروخانه ارسال شد و پس از بررسی و آماده‌سازی، جهت تحویل پردازش خواهد شد.
             </p>
           </div>
         ) : items.length === 0 ? (
-          <div className="bg-white p-12 text-center rounded-3xl border border-gray-100 space-y-4 shadow-sm">
-            <p className="text-gray-500 font-medium">سبد خرید شما در حال حاضر خالی است.</p>
+          <div className="bg-white p-12 text-center rounded-3xl border border-slate-200/80 space-y-3 shadow-xs">
+            <p className="text-slate-500 font-medium text-xs">سبد خرید شما در حال حاضر خالی است.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
               {!cartValidation.isValid && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl text-sm font-semibold">
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl text-xs font-bold">
                   ⚠️ {cartValidation.error}
                 </div>
               )}
 
               {orderError && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl text-sm font-semibold">
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl text-xs font-bold">
                   ⚠️ {orderError}
                 </div>
               )}
 
-              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                  <h2 className="font-bold text-gray-800">
-                    داروهای انتخاب‌شده از داروخانه:{" "}
-                    <span className="text-emerald-700">{cartValidation.pharmacyName}</span>
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                  <h2 className="font-bold text-slate-800 text-xs sm:text-sm">
+                    داروخانه مبدأ:{" "}
+                    <span className="text-teal-800 font-extrabold">{cartValidation.pharmacyName}</span>
                   </h2>
                   <button
                     onClick={handleClearCart}
-                    className="text-xs text-rose-600 hover:underline font-semibold"
+                    className="text-xs text-rose-600 hover:underline font-bold"
                   >
                     پاک کردن سبد
                   </button>
                 </div>
 
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-slate-100">
                   {items.map((item: any) => (
                     <div
                       key={item.inventoryId}
-                      className="py-4 flex justify-between items-center"
+                      className="py-3.5 flex justify-between items-center"
                     >
                       <div>
-                        <h3 className="font-bold text-gray-900 text-sm">
+                        <h3 className="font-bold text-slate-900 text-xs sm:text-sm">
                           {item.medicineNameFa}
                         </h3>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-[11px] text-slate-500 mt-1">
                           قیمت واحد: {formatToman(item.unitPriceToman)}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center border border-gray-200 rounded-lg">
+                        <div className="flex items-center border border-slate-200 rounded-lg">
                           <button
                             onClick={() =>
                               handleQuantityChange(item.inventoryId, item.quantity - 1)
                             }
-                            className="px-2.5 py-1 text-gray-600 hover:bg-gray-100 rounded-r-lg font-bold"
+                            className="px-2.5 py-1 text-slate-600 hover:bg-slate-100 rounded-r-lg font-bold"
                           >
                             -
                           </button>
-                          <span className="px-3 text-sm font-bold text-gray-800">
+                          <span className="px-3 text-xs font-bold text-slate-800">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() =>
                               handleQuantityChange(item.inventoryId, item.quantity + 1)
                             }
-                            className="px-2.5 py-1 text-gray-600 hover:bg-gray-100 rounded-l-lg font-bold"
+                            className="px-2.5 py-1 text-slate-600 hover:bg-slate-100 rounded-l-lg font-bold"
                           >
                             +
                           </button>
@@ -171,7 +171,7 @@ export default function CheckoutPage() {
 
                         <button
                           onClick={() => handleRemoveItem(item.inventoryId)}
-                          className="text-xs text-rose-500 hover:text-rose-700"
+                          className="text-xs text-rose-500 hover:text-rose-700 font-medium"
                         >
                           حذف
                         </button>
@@ -181,33 +181,33 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-3">
-                <h2 className="font-bold text-gray-800 text-sm">آدرس تحویل سفارش</h2>
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+                <h2 className="font-bold text-slate-900 text-xs sm:text-sm">آدرس دقیق تحویل سفارش</h2>
                 <textarea
                   rows={3}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="آدرس دقیق تحویل گیرنده را وارد نمایید..."
-                  className="w-full p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                  placeholder="آدرس کامل تحویل‌گیرنده را وارد نمایید..."
+                  className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-700 text-xs font-medium text-slate-900"
                 />
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-fit space-y-4">
-              <h2 className="font-bold text-gray-900 border-b border-gray-100 pb-3">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs h-fit space-y-4">
+              <h2 className="font-black text-slate-900 border-b border-slate-100 pb-3 text-sm">
                 خلاصه فاکتور
               </h2>
 
-              <div className="flex justify-between items-center text-sm text-gray-600">
+              <div className="flex justify-between items-center text-xs text-slate-600">
                 <span>تعداد اقلام:</span>
-                <span className="font-bold text-gray-800">
+                <span className="font-bold text-slate-800">
                   {items.reduce((sum, item) => sum + item.quantity, 0)} عدد
                 </span>
               </div>
 
-              <div className="flex justify-between items-center border-t border-gray-100 pt-3">
-                <span className="font-bold text-gray-900">مبلغ قابل پرداخت:</span>
-                <span className="text-lg font-black text-emerald-700">
+              <div className="flex justify-between items-center border-t border-slate-100 pt-3">
+                <span className="font-bold text-slate-900 text-xs">مبلغ قابل پرداخت به تومان:</span>
+                <span className="text-base font-black text-teal-800">
                   {formatToman(cartValidation.totalToman)}
                 </span>
               </div>
@@ -215,13 +215,13 @@ export default function CheckoutPage() {
               <button
                 onClick={handlePlaceOrder}
                 disabled={!cartValidation.isValid || isSubmitting}
-                className={`w-full py-3 rounded-xl font-bold text-white transition shadow-md text-sm ${
+                className={`w-full py-3 rounded-xl font-bold text-white transition shadow-2xs text-xs ${
                   cartValidation.isValid && !isSubmitting
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-gray-300 cursor-not-allowed"
+                    ? "bg-teal-800 hover:bg-teal-900 active:scale-98"
+                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
                 }`}
               >
-                {isSubmitting ? "در حال ثبت..." : "تایید و ثبت نهایی سفارش"}
+                {isSubmitting ? "در حال ثبت سفارش..." : "تایید و ثبت نهایی سفارش"}
               </button>
             </div>
           </div>
