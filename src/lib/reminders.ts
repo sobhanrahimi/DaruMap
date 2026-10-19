@@ -102,32 +102,34 @@ export async function recordDoseOccurrence(input: DoseActionInput) {
 
   const actionKey = `DOSE_ACTION:${input.reminderId}:${input.scheduledTime}:${input.action}`;
 
-  // Idempotency check in AuditLog
-  const existingLog = await prisma.auditLog.findFirst({
-    where: {
-      userId: input.userId,
-      action: actionKey,
-    },
+  // Idempotency check in AuditLog using atomic transaction
+  return await prisma.$transaction(async (tx) => {
+    const existingLog = await tx.auditLog.findFirst({
+      where: {
+        userId: input.userId,
+        action: actionKey,
+      },
+    });
+
+    if (existingLog) {
+      return { recorded: false, reason: "مصرف این نوبت قبلاً ثبت گردیده است." };
+    }
+
+    await tx.auditLog.create({
+      data: {
+        userId: input.userId,
+        action: actionKey,
+        details: `Medicine:${reminder.medicineName}|Dosage:${reminder.dosage}|Time:${input.scheduledTime}|Status:${input.action}`,
+      },
+    });
+
+    return { recorded: true, action: input.action, medicineName: reminder.medicineName };
   });
-
-  if (existingLog) {
-    return { recorded: false, reason: "مصرف این نوبت قبلاً ثبت گردیده است." };
-  }
-
-  await prisma.auditLog.create({
-    data: {
-      userId: input.userId,
-      action: actionKey,
-      details: `Medicine:${reminder.medicineName}|Dosage:${reminder.dosage}|Time:${input.scheduledTime}|Status:${input.action}`,
-    },
-  });
-
-  return { recorded: true, action: input.action, medicineName: reminder.medicineName };
 }
 
 /**
  * Persistent Server-Side Background Worker Service for Due Reminders
- * Dispatches in-app notifications with idempotency locks.
+ * Dispatches in-app notifications with atomic idempotency transactions.
  */
 export async function dispatchDueRemindersService(currentTimeHHMM?: string) {
   const now = new Date();
@@ -152,36 +154,38 @@ export async function dispatchDueRemindersService(currentTimeHHMM?: string) {
     const todayStr = now.toISOString().split("T")[0];
     const dispatchKey = `NOTIFICATION_DISPATCH:${reminder.id}:${todayStr}:${targetTime}`;
 
-    // Idempotency check preventing duplicate notification dispatch
-    const existingDispatch = await prisma.auditLog.findFirst({
-      where: {
-        userId: reminder.userId,
-        action: dispatchKey,
-      },
-    });
-
-    if (!existingDispatch) {
-      // Create persistent in-app notification
-      await prisma.notification.create({
-        data: {
-          userId: reminder.userId,
-          title: "⏰ زمان مصرف دارو",
-          message: `زمان مصرف داروی ${reminder.medicineName} (مقدار: ${reminder.dosage}) فرا رسیده است.`,
-          isRead: false,
-        },
-      });
-
-      // Record dispatch audit log lock
-      await prisma.auditLog.create({
-        data: {
+    // Atomic idempotency check & notification lock
+    await prisma.$transaction(async (tx) => {
+      const existingDispatch = await tx.auditLog.findFirst({
+        where: {
           userId: reminder.userId,
           action: dispatchKey,
-          details: `Dispatched reminder ${reminder.id} to user ${reminder.userId}`,
         },
       });
 
-      dispatchedCount++;
-    }
+      if (!existingDispatch) {
+        // Create persistent in-app notification
+        await tx.notification.create({
+          data: {
+            userId: reminder.userId,
+            title: "⏰ زمان مصرف دارو",
+            message: `زمان مصرف داروی ${reminder.medicineName} (مقدار: ${reminder.dosage}) فرا رسیده است.`,
+            isRead: false,
+          },
+        });
+
+        // Record dispatch audit log lock
+        await tx.auditLog.create({
+          data: {
+            userId: reminder.userId,
+            action: dispatchKey,
+            details: `Dispatched reminder ${reminder.id} to user ${reminder.userId}`,
+          },
+        });
+
+        dispatchedCount++;
+      }
+    });
   }
 
   return { dispatchedCount, targetTime };
