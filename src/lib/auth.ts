@@ -12,24 +12,36 @@ export interface SessionUser {
   email: string;
   role: string;
   pharmacyId?: string;
+  exp?: number; // Expiration epoch timestamp in seconds
 }
 
 const SESSION_SECRET = process.env.NEXTAUTH_SECRET || "daroomap-staging-session-secret-key-change-this";
+const DEFAULT_SESSION_DURATION_SECONDS = 7 * 24 * 3600; // 7 days
 
 /**
- * Creates a signed server-side session token.
+ * Creates a signed server-side session token with expiration.
  */
-export function createSessionToken(user: SessionUser): string {
-  const payload = Buffer.from(JSON.stringify(user)).toString("base64url");
+export function createSessionToken(
+  user: Omit<SessionUser, "exp"> & { exp?: number },
+  expiresInSeconds: number = DEFAULT_SESSION_DURATION_SECONDS
+): string {
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  const sessionData: SessionUser = {
+    ...user,
+    exp: user.exp || nowInSeconds + expiresInSeconds,
+  };
+
+  const payload = Buffer.from(JSON.stringify(sessionData)).toString("base64url");
   const signature = crypto
     .createHmac("sha256", SESSION_SECRET)
     .update(payload)
     .digest("base64url");
+
   return `${payload}.${signature}`;
 }
 
 /**
- * Verifies a signed server-side session token with HMAC-SHA256 signature check.
+ * Verifies a signed server-side session token with HMAC-SHA256 signature and expiration checks.
  */
 export function verifySessionToken(token: string | null | undefined): SessionUser | null {
   if (!token) return null;
@@ -54,7 +66,19 @@ export function verifySessionToken(token: string | null | undefined): SessionUse
       return null;
     }
 
-    return JSON.parse(Buffer.from(payload, "base64url").toString("utf-8")) as SessionUser;
+    const sessionUser = JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf-8")
+    ) as SessionUser;
+
+    // Check expiration timestamp
+    if (sessionUser.exp) {
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      if (nowInSeconds > sessionUser.exp) {
+        return null; // Expired session token
+      }
+    }
+
+    return sessionUser;
   } catch {
     return null;
   }

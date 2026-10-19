@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { validateFileMetadata } from "@/lib/storage";
+import { NextRequest } from "next/server";
+import { GET } from "@/app/api/prescriptions/[fileId]/route";
+import { createSessionToken } from "@/lib/auth";
 
 describe("Phase 4 — Prescription File Upload & Validation Rules", () => {
   it("allows valid image formats (JPEG, PNG, WEBP) and PDF within size limits", () => {
@@ -31,5 +34,25 @@ describe("Phase 4 — Prescription File Upload & Validation Rules", () => {
   it("rejects zero-byte files", () => {
     const empty = validateFileMetadata("rx.jpg", "image/jpeg", 0);
     expect(empty.valid).toBe(false);
+  });
+
+  it("enforces authentication and safe path traversal checks on prescription download route", async () => {
+    // 1. Path traversal attempt -> 400
+    const traversalReq = new NextRequest("http://localhost:3000/api/prescriptions/../etc/passwd");
+    const traversalRes = await GET(traversalReq, { params: Promise.resolve({ fileId: "../etc/passwd" }) });
+    expect(traversalRes.status).toBe(400);
+
+    // 2. Unauthenticated request -> 401
+    const unauthReq = new NextRequest("http://localhost:3000/api/prescriptions/some-uuid.jpg");
+    const unauthRes = await GET(unauthReq, { params: Promise.resolve({ fileId: "some-uuid.jpg" }) });
+    expect(unauthRes.status).toBe(401);
+
+    // 3. Authenticated request for non-existent file -> 404
+    const validToken = createSessionToken({ id: "user-1", email: "test@example.com", role: "CUSTOMER" });
+    const authReq = new NextRequest("http://localhost:3000/api/prescriptions/non-existent.jpg", {
+      headers: { authorization: `Bearer ${validToken}` },
+    });
+    const authRes = await GET(authReq, { params: Promise.resolve({ fileId: "non-existent.jpg" }) });
+    expect(authRes.status).toBe(404);
   });
 });

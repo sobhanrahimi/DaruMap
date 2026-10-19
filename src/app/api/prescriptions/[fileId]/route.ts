@@ -30,23 +30,30 @@ export async function GET(
     );
   }
 
-  // Look up prescription record in database
-  const prescription = await prisma.prescription.findFirst({
-    where: { imageUrl: fileId },
-  });
+  try {
+    // Look up prescription record in database
+    const prescription = await prisma.prescription.findFirst({
+      where: { imageUrl: fileId },
+    });
 
-  if (!prescription) {
+    if (!prescription) {
+      return NextResponse.json(
+        { error: "نسخه یافت نشد." },
+        { status: 404 }
+      );
+    }
+
+    // Strict ownership enforcement: Only prescription owner or ADMIN role allowed
+    if (sessionUser.id !== prescription.userId && sessionUser.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "دسترسی غیرمجاز. شما اجازه مشاهده این نسخه پزشکی را ندارید." },
+        { status: 403 }
+      );
+    }
+  } catch {
     return NextResponse.json(
-      { error: "نسخه یافت نشد." },
+      { error: "نسخه یافت نشد یا دسترسی به پایگاه‌داده امکان‌پذیر نیست." },
       { status: 404 }
-    );
-  }
-
-  // Strict ownership enforcement: Only prescription owner or ADMIN role allowed
-  if (sessionUser.id !== prescription.userId && sessionUser.role !== "ADMIN") {
-    return NextResponse.json(
-      { error: "دسترسی غیرمجاز. شما اجازه مشاهده این نسخه پزشکی را ندارید." },
-      { status: 403 }
     );
   }
 
