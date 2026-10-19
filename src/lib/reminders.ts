@@ -103,33 +103,41 @@ export async function recordDoseOccurrence(input: DoseActionInput) {
   const actionKey = `DOSE_ACTION:${input.reminderId}:${input.scheduledTime}:${input.action}`;
 
   // Idempotency check in AuditLog using atomic transaction
-  return await prisma.$transaction(async (tx) => {
-    const existingLog = await tx.auditLog.findFirst({
-      where: {
-        userId: input.userId,
-        action: actionKey,
-      },
-    });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const existingLog = await tx.auditLog.findFirst({
+        where: {
+          userId: input.userId,
+          action: actionKey,
+        },
+      });
 
-    if (existingLog) {
+      if (existingLog) {
+        return { recorded: false, reason: "مصرف این نوبت قبلاً ثبت گردیده است." };
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: input.userId,
+          action: actionKey,
+          details: `Medicine:${reminder.medicineName}|Dosage:${reminder.dosage}|Time:${input.scheduledTime}|Status:${input.action}`,
+        },
+      });
+
+      return { recorded: true, action: input.action, medicineName: reminder.medicineName };
+    });
+  } catch (err: unknown) {
+    const isP2002 = typeof err === "object" && err !== null && "code" in err && (err as { code?: string }).code === "P2002";
+    if (isP2002) {
       return { recorded: false, reason: "مصرف این نوبت قبلاً ثبت گردیده است." };
     }
-
-    await tx.auditLog.create({
-      data: {
-        userId: input.userId,
-        action: actionKey,
-        details: `Medicine:${reminder.medicineName}|Dosage:${reminder.dosage}|Time:${input.scheduledTime}|Status:${input.action}`,
-      },
-    });
-
-    return { recorded: true, action: input.action, medicineName: reminder.medicineName };
-  });
+    throw err;
+  }
 }
 
 /**
  * Persistent Server-Side Background Worker Service for Due Reminders
- * Dispatches in-app notifications with atomic idempotency transactions.
+ * Dispatches in-app notifications with atomic idempotency transactions and DB-level unique constraint handling.
  */
 export async function dispatchDueRemindersService(currentTimeHHMM?: string) {
   const now = new Date();
@@ -154,38 +162,47 @@ export async function dispatchDueRemindersService(currentTimeHHMM?: string) {
     const todayStr = now.toISOString().split("T")[0];
     const dispatchKey = `NOTIFICATION_DISPATCH:${reminder.id}:${todayStr}:${targetTime}`;
 
-    // Atomic idempotency check & notification lock
-    await prisma.$transaction(async (tx) => {
-      const existingDispatch = await tx.auditLog.findFirst({
-        where: {
-          userId: reminder.userId,
-          action: dispatchKey,
-        },
-      });
-
-      if (!existingDispatch) {
-        // Create persistent in-app notification
-        await tx.notification.create({
-          data: {
-            userId: reminder.userId,
-            title: "⏰ زمان مصرف دارو",
-            message: `زمان مصرف داروی ${reminder.medicineName} (مقدار: ${reminder.dosage}) فرا رسیده است.`,
-            isRead: false,
-          },
-        });
-
-        // Record dispatch audit log lock
-        await tx.auditLog.create({
-          data: {
+    try {
+      await prisma.$transaction(async (tx) => {
+        const existingDispatch = await tx.auditLog.findFirst({
+          where: {
             userId: reminder.userId,
             action: dispatchKey,
-            details: `Dispatched reminder ${reminder.id} to user ${reminder.userId}`,
           },
         });
 
-        dispatchedCount++;
+        if (!existingDispatch) {
+          // Record dispatch audit log lock first
+          await tx.auditLog.create({
+            data: {
+              userId: reminder.userId,
+              action: dispatchKey,
+              details: `Dispatched reminder ${reminder.id} to user ${reminder.userId}`,
+            },
+          });
+
+          // Create persistent in-app notification
+          await tx.notification.create({
+            data: {
+              userId: reminder.userId,
+              title: "⏰ زمان مصرف دارو",
+              message: `زمان مصرف داروی ${reminder.medicineName} (مقدار: ${reminder.dosage}) فرا رسیده است.`,
+              isRead: false,
+            },
+          });
+
+          dispatchedCount++;
+        }
+      });
+    } catch (err: unknown) {
+      // P2002 is Prisma's Unique Constraint Violation error code
+      const isP2002 = typeof err === "object" && err !== null && "code" in err && (err as { code?: string }).code === "P2002";
+      if (isP2002) {
+        // Concurrency collision caught gracefully at DB engine level
+        continue;
       }
-    });
+      throw err;
+    }
   }
 
   return { dispatchedCount, targetTime };

@@ -134,6 +134,8 @@ model PharmacyInventory {
   pharmacy Pharmacy  @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
   medicine Medicine?  @relation(fields: [medicineId], references: [id], onDelete: Cascade)
   product  Product?   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([pharmacyId, medicineId])
 }
 
 model InsuranceProvider {
@@ -208,6 +210,10 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@unique([userId, action])
 }
 
 model Order {
