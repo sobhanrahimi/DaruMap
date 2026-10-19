@@ -213,7 +213,7 @@ model AuditLog {
 
   @@index([userId])
   @@index([action])
-  @@unique([userId, action])
+  @@index([userId, action])
 }
 
 model Order {

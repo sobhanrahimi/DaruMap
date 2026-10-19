@@ -29,6 +29,10 @@ describe("Phase 6 — Full System Security & Access Audit", () => {
     const parts = token.split(".");
     const tampered = `${parts[0]}.invalidSignature123`;
     expect(verifySessionToken(tampered)).toBeNull();
+
+    // Expired token rejection
+    const expiredToken = createSessionToken({ ...user, exp: Math.floor(Date.now() / 1000) - 10 });
+    expect(verifySessionToken(expiredToken)).toBeNull();
   });
 
   it("rejects path traversal attempts and invalid file types in storage manager", () => {
