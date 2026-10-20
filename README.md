@@ -1,6 +1,53 @@
-# دارومپ (DaruMap) — راهنمای ارزیابی زیرساخت و استقرار استیجینگ (Staging Deployment & Cloud Audit Guide)
+# دارومپ (DaruMap) — سامانه کشوری استعلام و سفارش آنلاین دارو
 
 **دارومپ (DaruMap)** یک پلتفرم کشوری برای یافتن داروهای کمیاب، استعلام انبار داروخانه‌ها، ارسال امن نسخه و انتخاب بیمه پایه، یادآورهای دارویی، باشگاه مشتریان، مشاهده قیمت‌ها به تومان و ثبت سفارش آنلاین با پشتیبانی کامل از چیدمان **راست‌به‌چپ (RTL)** و فونت فارسی **وزیرمتن** می‌باشد.
+
+---
+
+## 📌 وضعیت لینک GitHub Pages و راهنمای پیش‌نمایش (GitHub Pages vs. Live App)
+
+> **توجه مهم درباره لینک GitHub Pages:**
+> آدرس GitHub Pages این مخزن به صورت پیش‌فرض توسط سیستم GitHub Pages برای **نمایش مستندات پروژه (فایل README.md)** پیکربندی شده است.
+>
+> به دلیل بهره‌گیری اپلیکیشن **DaruMap** از معماری کامل Next.js App Router، سرور Node.js، پایگاه داده PostgreSQL / Prisma ORM، توابع اکشن سمت سرور (Server Actions) و پردازش امن نسخه‌ها، **این برنامه امکان اجرا به صورت وب‌سایت استاتیک در GitHub Pages را ندارد**.
+
+---
+
+## 💻 راهنمای سریع پیش‌نمایش و بررسی رابط کاربری (Local UI Preview Guide)
+
+برای مشاهده و تست کامل رابط کاربری، صفحات کاربر، پنل داروخانه و مدیریت، مراحل زیر را در محیط محلی (Local) دنبال کنید:
+
+### ۱. پیش‌نیازها و نصب وابستگی‌ها
+```bash
+npm install
+npx prisma generate
+```
+
+### ۲. تنظیم متغیرهای محیطی آزمایشی
+فایل `.env` را ایجاد کرده یا متغیرهای نمونه زیر را قرار دهید (نیاز به ساخت دیتابیس خارجی برای مرور UI اولیه نیست):
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/daroomap_db"
+NEXTAUTH_SECRET="preview-secret-key-12345"
+NEXTAUTH_URL="http://localhost:3000"
+NODE_ENV="development"
+```
+
+### ۳. اجرا در حالت توسعه (Development Mode)
+```bash
+npm run dev
+```
+
+پس از اجرای دستور فوق، مرورگر خود را باز کرده و به آدرس زیر مراجعه فرمایید:
+👉 **`http://localhost:3000`**
+
+#### مسیرهای اصلی جهت بررسی UI:
+* **صفحه اصلی و جستجوی هوشمند دارو:** `http://localhost:3000`
+* **لیست داروخانه‌ها:** `http://localhost:3000/pharmacies`
+* **جزئیات داروخانه:** `http://localhost:3000/pharmacy/ph-1`
+* **پنل مشتری (سفارشات و یادآورها):** `http://localhost:3000/dashboard/customer`
+* **پنل مدیریت داروخانه:** `http://localhost:3000/dashboard/pharmacy`
+* **پنل مدیریت کل سیستم (Admin):** `http://localhost:3000/dashboard/admin`
+* **سبد خرید و نهایی‌سازی سفارش:** `http://localhost:3000/checkout`
 
 ---
 
@@ -33,56 +80,26 @@
 
 ## 🛠 دستورات ساخت، مایگریشن و اجرا (Build, Migration & Start Commands)
 
-### ۱. نصب وابستگی‌ها و تولید کلاینت پریزما
-```bash
-npm install
-npx prisma generate
-```
-
-### ۲. مایگریشن دیتابیس در استیجینگ
+### ۱. مایگریشن دیتابیس در استیجینگ
 برای اعمال تغییرات اسکیما روی دیتابیس PostgreSQL استیجینگ بدون از دست رفتن داده‌ها:
 ```bash
 npx prisma migrate deploy
 ```
-*نکته:* برای دیتابیس‌های آزمایشی اولیه‌می‌توان از دستور `npx prisma db push` استفاده نمود.
 
-### ۳. ساخت نسخه اجرایی Production / Staging
+### ۲. ساخت نسخه اجرایی Production / Staging
 ```bash
 npm run build
 ```
 
-### ۴. اجرای برنامه
+### ۳. اجرای برنامه
 ```bash
 npm start
 ```
 
-### ۵. ساخت و اجرای کانتینر Docker
+### ۴. ساخت و اجرای کانتینر Docker
 ```bash
 docker build -t daroomap:staging .
 docker run -d -p 3000:3000 --env-file .env -v daroomap_prescriptions:/app/uploads/prescriptions daroomap:staging
-```
-
----
-
-## 🔑 متغیرهای محیطی مورد نیاز (Environment Variables)
-
-نام متغیرهای محیطی مورد نیاز در فایل `.env`:
-* `DATABASE_URL`: آدرس اتصال به دیتابیس PostgreSQL استیجینگ.
-* `NODE_ENV`: مقدار `staging` یا `production`.
-* `NEXT_PUBLIC_APP_URL`: آدرس دامنه استیجینگ (مانند `https://staging.daroomap.ir`).
-* `NEXTAUTH_SECRET`: کلید رمزنگاری توکن‌های احراز هویت.
-* `NEXTAUTH_URL`: آدرس پایه احراز هویت.
-* `PRESCRIPTION_STORAGE_PATH`: مسیر دایرکتوری پایدار برای ذخیره‌سازی نسخه‌ها (مانند `/app/uploads/prescriptions`).
-* `CRON_SECRET_KEY`: کلید امنیتی احراز هویت درخواست‌های سرویس‌دهنده زمان‌بندی یادآورها.
-
----
-
-## ⏰ تنظیم امن پردازشگر پس‌زمینه یادآورها (Secure Reminder Worker Setup)
-
-پردازشگر یادآورهای دارویی از طریق نقطه پایانی `POST /api/worker/reminders` اجرا می‌گردد.
-جهت حفظ امنیت، کلید `CRON_SECRET_KEY` نباید به صورت صریح در متون Shell ثبت شود. پیشنهاد می‌شود کلید از متغیرهای محیطی سرور خوانده شود:
-```bash
-* * * * * . /etc/environment; curl -s -S -X POST "${NEXT_PUBLIC_APP_URL}/api/worker/reminders" -H "Authorization: Bearer ${CRON_SECRET_KEY}" -H "Content-Type: application/json" > /dev/null
 ```
 
 ---
